@@ -16,9 +16,19 @@ from homeassistant.helpers.selector import (
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
 )
 
-from .const import CONF_MAX_VOLUME, CONF_PING_INTERVAL, CONF_POWER_CYCLE_INIT, DOMAIN
+from .const import (
+    CONF_MAX_VOLUME,
+    CONF_PING_INTERVAL,
+    CONF_POWER_CYCLE_INIT,
+    CONF_SOURCES,
+    DOMAIN,
+)
+from .sonyavr import SOURCE_MENU_MAP
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,6 +56,15 @@ OPTIONS_SCHEMA = probatio.Schema(
             probatio.Coerce(int),
         ),
         probatio.Optional(CONF_POWER_CYCLE_INIT, default=True): BooleanSelector(),
+        # Inputs offered in the source list. Models differ (e.g. an STR-ZA1100ES
+        # has 8 inputs), so let users hide the ones their AVR does not have.
+        probatio.Optional(CONF_SOURCES): SelectSelector(
+            SelectSelectorConfig(
+                options=list(SOURCE_MENU_MAP.values()),
+                multiple=True,
+                mode=SelectSelectorMode.LIST,
+            )
+        ),
     }
 )
 
@@ -121,6 +140,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     ),
                     CONF_POWER_CYCLE_INIT: self.config_entry.options.get(
                         CONF_POWER_CYCLE_INIT, True
+                    ),
+                    CONF_SOURCES: self.config_entry.options.get(
+                        CONF_SOURCES, list(SOURCE_MENU_MAP.values())
                     ),
                 },
             ),

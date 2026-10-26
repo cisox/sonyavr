@@ -41,6 +41,7 @@ SOURCE_NAMES = [
     "video2",
     "video3",
     "video4",
+    "aux",
     "md",
     "phono",
     "multi",
@@ -86,6 +87,8 @@ CMD_SOURCE_MAP = {
     "video2": bytearray([0x02, 0x04, 0xA0, 0x42, 0x00, 0x11, 0x00]),
     "video3": bytearray([0x02, 0x04, 0xA0, 0x42, 0x00, 0x12, 0x00]),
     "video4": bytearray([0x02, 0x04, 0xA0, 0x42, 0x00, 0x13, 0x00]),
+    # AUX, confirmed on STR-ZA1100ES (command and feedback both use 0x0A)
+    "aux": bytearray([0x02, 0x04, 0xA0, 0x42, 0x00, 0x0A, 0x00]),
     "md": bytearray([0x02, 0x04, 0xA0, 0x42, 0x00, 0x04, 0x00]),
     "phono": bytearray([0x02, 0x04, 0xA0, 0x42, 0x00, 0x01, 0x00]),
     "multi": bytearray([0x02, 0x04, 0xA0, 0x42, 0x00, 0x20, 0x00]),
@@ -262,6 +265,16 @@ FEEDBACK_SOURCE_MAP = {
         bytearray([0x00, 0x13, 0x00]),
         bytearray([0x00, 0x10, 0x00]),
     ],
+    "aux": [
+        bytearray([0x02, 0x07, 0xA8, 0x82, 0x00, 0x0A, 0x00]),
+        # 21:00:9A confirmed on STR-ZA1100ES
+        bytearray([0x21, 0x00, 0x9A]),
+        bytearray([0x23, 0x00, 0x98]),
+        bytearray([0x20, 0x00, 0x9B]),
+        bytearray([0x00, 0x11, 0x00]),
+        bytearray([0x00, 0x13, 0x00]),
+        bytearray([0x00, 0x10, 0x00]),
+    ],
     "md": [
         bytearray([0x02, 0x07, 0xA8, 0x82, 0x00, 0x04, 0x00]),
         bytearray([0x21, 0x00, 0x8A]),
@@ -433,6 +446,7 @@ SOURCE_MENU_MAP = {
     "video2": "Video 2",
     "video3": "Video 3",
     "video4": "Video 4",
+    "aux": "AUX",
     "md": "MD/Tape",
     "phono": "Phono",
     "multi": "Multi In",
@@ -1005,6 +1019,22 @@ class FeedbackWatcher:
                     # FEEDBACK_POWER_ON_MUTE_ON
                     self.state_service.update_power(True, True)
                     self.state_service.update_muted(True)
+                elif (status := self._status_byte(data)) is not None:
+                    # The tail ends in a checksum that also covers the video source
+                    # byte (data[6]), which varies with the AVR's input assignments,
+                    # so exact matches above miss e.g. TV / SA-CD on an STR-ZA1100ES.
+                    # The status byte itself encodes the state: bit 0 = power,
+                    # bit 1 = muted (holds for every entry in FEEDBACK_SOURCE_MAP).
+                    power = bool(status & 0x01)
+                    _LOGGER.debug(
+                        "Power/Mute from status byte %s: power %s muted %s",
+                        hex(status),
+                        power,
+                        bool(status & 0x02),
+                    )
+                    self.state_service.update_power(power, True)
+                    if power:
+                        self.state_service.update_muted(bool(status & 0x02))
                 else:
                     _LOGGER.debug(
                         "Unmatched Power/Mute Data %s",
@@ -1012,6 +1042,21 @@ class FeedbackWatcher:
                     )
                 source_switched = True
         return source_switched
+
+    @staticmethod
+    def _status_byte(data):
+        """Return the power/mute status byte from a source feedback packet.
+
+        Most models send it as data[-3] (0x2X); the 1060 variant sends
+        00:1X:00, i.e. data[-2]. Returns None if neither form is present.
+        """
+        if len(data) < 3:
+            return None
+        if data[-3] & 0xF0 == 0x20:
+            return data[-3]
+        if data[-3] == 0x00 and data[-2] & 0xF0 == 0x10:
+            return data[-2]
+        return None
 
     def check_sound_field(self, data):
         sound_field_switched = False
