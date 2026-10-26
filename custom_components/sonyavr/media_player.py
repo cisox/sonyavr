@@ -29,6 +29,7 @@ from homeassistant.helpers.start import async_at_started
 
 from .const import (
     CONF_POWER_CYCLE_INIT,
+    CONF_SOUND_MODES,
     CONF_SOURCES,
     DOMAIN,
     SERVICE_SEND_COMMAND,
@@ -248,7 +249,10 @@ class SonyAVRDevice(MediaPlayerEntity):
 
     @property
     def sound_mode_list(self):
-        return self._device.modes
+        visible = self._config_entry.options.get(CONF_SOUND_MODES)
+        if not visible:
+            return self._device.modes
+        return tuple(m for m in self._device.modes if m in visible)
 
     @property
     def sound_mode(self):
