@@ -714,6 +714,12 @@ class CommandService:
             self.command_reader = None
 
     async def async_send_command(self, cmd):
+        if not self.block_sending and self.command_writer is None:
+            # A previous reconnect can fail (AVR busy, network blip) and leave no
+            # socket. Without this, every later command was dropped until reload.
+            _LOGGER.debug("Command socket missing, attempting to reconnect")
+            await self.async_connect()
+
         if not self.block_sending and self.command_writer is not None:
             try:
                 self.command_writer.write(cmd)
@@ -852,7 +858,10 @@ class CommandService:
 
     async def async_select_source(self, source):
         _LOGGER.debug("Select Source %s", source)
-        if self.initialized and self.state_service.source != source:
+        # Always send, even if we believe the AVR is already on this source: the
+        # cached state can be stale (e.g. after an unrecognised feedback packet),
+        # and skipping the command then leaves the AVR on the wrong input.
+        if self.initialized:
             self.state_service.update_source(source)
             await self.async_send_command(CMD_SOURCE_MAP[source])
 
@@ -879,7 +888,8 @@ class CommandService:
                     return
 
     async def async_select_sound_field(self, sound_field):
-        if self.initialized and self.state_service.sound_field != sound_field:
+        # Always send; see async_select_source.
+        if self.initialized:
             self.state_service.update_sound_field(sound_field)
             await self.async_send_command(CMD_SOUND_FIELD_MAP[sound_field])
 
