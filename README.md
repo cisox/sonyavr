@@ -31,7 +31,7 @@ For other AVRs, you may need to change the default port during configuration.  B
 The integration is a Local Push integration - i.e. it subscribes to notification of changes to the AVR, so doesn't need to periodically poll for its state.
 
 ## Network Standby
-The integration requires Network Standby to be available and enabled on the AVR.  Please make sure Network Standby is enabled befoer installing the integration.
+The integration requires Network Standby to be available and enabled on the AVR.  Please make sure Network Standby is enabled before installing the integration.
 
 ## Installation
 
@@ -55,7 +55,21 @@ This will display the configuration page.
 ### Manual Entry
 You need to enter the details of your processor manually - IP address, name, model and port.
 
-When you select Submit, the configuration will setup the components in Home Assistant.  It will create one device, two entities and a service.
+When you select Submit, the configuration will setup the components in Home Assistant.  It will create one device, three entities and a service.
+
+### Options
+After setup, select Configure on the integration.  A menu offers three pages; each saves on its own, so you can change one without revisiting the others.  Changes apply straight away, except Initialize by Power Cycle, which applies the next time Home Assistant starts.
+
+| Page | Option | What it does |
+| --- | --- | --- |
+| Configuration | Maximum Allowed Volume | Upper limit for volume set from Home Assistant, in the AVR's own volume units. |
+| Configuration | Ping interval | Seconds between connectivity checks.  When the AVR becomes reachable again after being unavailable, the integration reconnects.  0 disables the check. |
+| Configuration | Initialize by Power Cycle | If the AVR is off when Home Assistant starts, briefly turn it on to read its state, then turn it off again.  If disabled, states the AVR hasn't reported yet (such as the source) appear when it is next turned on or changed. |
+| Show Inputs and Sound Modes | Inputs to show | Choose which inputs appear in the source list, to hide inputs your AVR doesn't have.  Leave all selected to show every input. |
+| Show Inputs and Sound Modes | Sound modes to show | Choose which sound modes appear in the sound mode list, to hide modes your AVR doesn't support.  Leave all selected to show every mode. |
+| Input Names | (one field per shown input) | Optional display names for the inputs, e.g. the device connected to each one.  Leave blank to keep the default name.  Automations can still select inputs by their default names. |
+
+For example, an STR-ZA1100ES has these inputs: Blu-ray (BD/DVD), Sat / Cable (SAT/CATV), Game, STB, Video 1 (VIDEO), AUX, TV and CD (SA-CD/CD); and these sound modes: 2 Channels, Analog Direct, A.F.D., Multi Stereo, Dolby Surround and Neural:X.
 
 ## Device & Entities
 A device will be created with the name given during setup.
